@@ -34,7 +34,7 @@ public class User implements Serializable {
         this.username = username;
         this.password = password;
         this.displayName = displayName;
-        this.online = true;
+        this.online = online;
     }
 
     public String getUsername() {
