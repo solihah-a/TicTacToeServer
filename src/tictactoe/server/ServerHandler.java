@@ -116,11 +116,38 @@ public class ServerHandler extends Thread{
 
     /**
      * A function that safely closes the client's connection and associated resources (streams/socket).
-     *  Implementation in progress
      */
     public void close() {
-        // Implementation for closing I/O streams and the client socket will go here.
-        LOGGER.log(Level.INFO, "Connection closing logic for user: " + currentUsername + " to be implemented.");
+        LOGGER.log(Level.INFO, "Closing connection and streams for user: " + currentUsername);
+
+        //Close DataOutputStream
+        try {
+            if (outputStream != null) {
+                outputStream.close();
+            }
+        } catch (IOException e) {
+            LOGGER.log(Level.WARNING, "Error closing output stream for " + currentUsername, e);
+        }
+
+        //Close DataInputStream
+        try {
+            if (inputStream != null) {
+                inputStream.close();
+            }
+        } catch (IOException e) {
+            LOGGER.log(Level.WARNING, "Error closing input stream for " + currentUsername, e);
+        }
+
+        //lose Socket connection
+        try {
+            if (socket != null && !socket.isClosed()) {
+                socket.close();
+            }
+        } catch (IOException e) {
+            LOGGER.log(Level.SEVERE, "Error closing socket connection for " + currentUsername, e);
+        }
+
+        LOGGER.log(Level.INFO, "Resources successfully closed for user: " + currentUsername);
     }
 
     /**
