@@ -1,6 +1,7 @@
 package tictactoe.server;
 
 import tictactoe.model.Event;
+import tictactoe.model.EventStatus;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -51,6 +52,21 @@ public class ServerHandler extends Thread{
      */
     private final Gson gson;
 
+    // Static initializer block runs only once when the class is loaded.
+    static {
+        event = new Event(
+                0,              // eventId (Integer, set to 0/default)
+                null,                  // sender (String, set to null)
+                null,                  // opponent (String, set to null)
+                (EventStatus) null,    // status (EventStatus, set to null)
+                null,                  // turn (String, set to null)
+                -1                     // move (Integer, set to -1 as required)
+        );
+
+        // Log the initialization
+        Logger.getLogger(ServerHandler.class.getName())
+                .log(Level.INFO, "Shared static Event object initialized with move = -1.");
+    }
 
     /**
      * The parameterized constructor for the ServerHandler class.
