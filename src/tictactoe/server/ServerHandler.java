@@ -5,13 +5,13 @@ import tictactoe.model.EventStatus;
 import tictactoe.socket.Request;
 import tictactoe.socket.Response;
 import tictactoe.socket.GamingResponse;
-import tictactoe.socket.RequestType;
 import tictactoe.socket.ResponseStatus;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.logging.Level;
@@ -106,12 +106,59 @@ public class ServerHandler extends Thread{
     /**
      * The override method from the Thread class. This is where the core logic
      * for receiving, processing, and responding to client requests will run.
-     * Implementation in progress
      */
     @Override
     public void run() {
-        // Core client-handling logic (reading Request, sending Response) will go here.
-        LOGGER.log(Level.INFO, "Handler thread started for user: " + currentUsername);
+        String serializedRequest;
+        Response serverResponse;
+
+        // Loop indefinitely to keep receiving requests
+        while (true) {
+            try {
+                //Read the client's serialized request (JSON string)
+                serializedRequest = inputStream.readUTF();
+
+                LOGGER.log(Level.INFO, "Received request from " + currentUsername + ": " + serializedRequest);
+
+                //Deserialize the request using Gson
+                Request clientRequest = gson.fromJson(serializedRequest, Request.class);
+
+                //Use the helper function handleRequest() to get the response
+                serverResponse = handleRequest(clientRequest);
+
+            } catch (EOFException e) {
+                LOGGER.log(Level.INFO, currentUsername + " disconnected (EOF). Ending handler thread.");
+                break; // Exit the infinite loop
+            } catch (IOException e) {
+                LOGGER.log(Level.SEVERE, "IO Error while reading request from " + currentUsername + ". Disconnecting.", e);
+                break; // Exit the infinite loop on severe error
+            } catch (Exception e) {
+                // Catch any other unexpected error during processing
+                LOGGER.log(Level.SEVERE, "Unexpected error processing request for " + currentUsername, e);
+
+                // Create a generic failure response
+                serverResponse = new Response(ResponseStatus.FAILURE, "Internal server error.");
+            }
+
+            // Send Response Section
+            try {
+                //Serialize the response
+                String serializedResponse = gson.toJson(serverResponse);
+
+                LOGGER.log(Level.INFO, "Sending response to " + currentUsername + ": " + serializedResponse);
+
+                //Write and flush the serialized response using the output stream
+                outputStream.writeUTF(serializedResponse);
+                outputStream.flush();
+
+            } catch (IOException e) {
+                LOGGER.log(Level.SEVERE, "IO Error while writing response to " + currentUsername + ". Disconnecting.", e);
+                break; // Exit the infinite loop
+            }
+        }
+
+        // Finally call close() when the loop is exited
+        close();
     }
 
     /**
