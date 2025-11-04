@@ -2,6 +2,7 @@ package tictactoe.server;
 
 import tictactoe.model.Event;
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -48,7 +49,7 @@ public class ServerHandler extends Thread{
     /**
      * Gson object used for serialization and deserialization.
      */
-    private Gson gson;
+    private final Gson gson;
 
 
     /**
@@ -63,17 +64,22 @@ public class ServerHandler extends Thread{
         this.socket = socket;
         this.currentUsername = username;
 
-        // Log the new connection
-        LOGGER.log(Level.INFO, "New handler created for user: " + username);
+        // Initialize Gson with Null Serialization (Completes Task 5)
+        // GsonBuilder allows custom configuration, including serializing nulls.
+        this.gson = new GsonBuilder()
+                .serializeNulls() // Configuration to include null fields in the JSON output
+                .create();
 
-        // Initialize I/O streams and Gson here (Implementation in a later task)
-        this.gson = new Gson();
+        // Initialize I/O streams (Task 4)
         try {
             this.inputStream = new DataInputStream(socket.getInputStream());
             this.outputStream = new DataOutputStream(socket.getOutputStream());
         } catch (IOException e) {
             LOGGER.log(Level.SEVERE, "Failed to initialize I/O streams for user: " + username, e);
         }
+
+        // Log the new connection
+        LOGGER.log(Level.INFO, "New handler created for user: " + username);
     }
 
     /**
