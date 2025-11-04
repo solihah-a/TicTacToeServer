@@ -3,6 +3,7 @@ package tictactoe.server;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
+import java.net.Socket;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -93,12 +94,47 @@ public class SocketServer
 
     /**
      * A method that sets up the server to start accepting client connections.
-     * It should be empty for now and will be implemented in later milestones.
      * This method will also dispatch a new ServerHandler instance for each connection.
      */
     public void startAcceptingRequest() {
-        // Implementation for the main accept loop will go here.
-        System.out.println("Server is now accepting requests (currently empty).");
+        LOGGER.log(Level.INFO, "Server is now listening for two client connections...");
+        Socket clientSocket;
+        String username;
+
+        try {
+            //Accept First Client (Player X)
+            username = "Player X";
+            LOGGER.log(Level.INFO, "Waiting for " + username + " connection...");
+
+            // The accept() function is a blocking operation.
+            clientSocket = serverSocket.accept();
+
+            LOGGER.log(Level.INFO, username + " connected from: " + clientSocket.getInetAddress().getHostAddress());
+
+            // Create and start a new thread for the first client
+            ServerHandler handlerX = new ServerHandler(clientSocket, username);
+            handlerX.start();
+
+
+            // Accept Second Client (Player O)
+            username = "Player O";
+            LOGGER.log(Level.INFO, "Waiting for " + username + " connection...");
+
+            // The server blocks here until the second client connects.
+            clientSocket = serverSocket.accept();
+
+            LOGGER.log(Level.INFO, username + " connected from: " + clientSocket.getInetAddress().getHostAddress());
+
+            // Create and start a new thread for the second client
+            ServerHandler handlerO = new ServerHandler(clientSocket, username);
+            handlerO.start();
+
+            LOGGER.log(Level.INFO, "Both players connected. Game setup is complete.");
+
+        } catch (IOException e) {
+            // Handle exceptions during accept() operation (e.g., socket closed)
+            LOGGER.log(Level.SEVERE, "An error occurred while accepting client connections.", e);
+        }
     }
 
     /**
