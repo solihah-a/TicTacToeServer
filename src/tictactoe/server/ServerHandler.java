@@ -1,11 +1,7 @@
 package tictactoe.server;
 
-import tictactoe.model.Event;
-import tictactoe.model.EventStatus;
-import tictactoe.socket.Request;
-import tictactoe.socket.Response;
-import tictactoe.socket.GamingResponse;
-import tictactoe.socket.ResponseStatus;
+import tictactoe.model.*;
+import tictactoe.socket.*;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -22,7 +18,7 @@ import java.util.logging.Logger;
  * Each instance of this class manages the I/O for a single client connection
  * and runs in a separate thread.
  */
-public class ServerHandler extends Thread{
+public class ServerHandler extends Thread {
 
     // Logger for logging server handler actions
     private static final Logger LOGGER = Logger.getLogger(ServerHandler.class.getName());
@@ -232,68 +228,76 @@ public class ServerHandler extends Thread{
     }
 
     /**
-     * Handles the SEND_MOVE request. Stores the move and checks for turn violation.
+     * Handles the SEND_MOVE request. Stores the move and **notifies** the opponent.
+     * This method is synchronized on the shared 'event' object.
      *
      * @param move The integer move (0-8) sent by the client.
      * @return A standard Response with SUCCESS or FAILURE status.
      */
     public Response handleSendMove(Integer move) {
-        // Check for consecutive moves (Turn check)
-        // If the current user made the last move, it's not their turn.
-        if (this.currentUsername.equals(event.getTurn())) {
-            String message = "It is not your turn, " + this.currentUsername + ". Wait for opponent.";
-            LOGGER.log(Level.WARNING, message);
-            return new Response(ResponseStatus.FAILURE, message);
+        synchronized (event) {
+            // Check for consecutive moves (Turn check)
+            if (this.currentUsername.equals(event.getTurn())) {
+                String message = "It is not your turn, " + this.currentUsername + ". Wait for opponent.";
+                LOGGER.log(Level.WARNING, message);
+                return new Response(ResponseStatus.FAILURE, message);
+            }
+
+            // Set the move and update the turn to the current user (X or O)
+            event.setMove(move);
+            event.setTurn(this.currentUsername);
+
+            LOGGER.log(Level.INFO, "Move " + move + " successfully stored by: " + this.currentUsername);
+
+            // CRITICAL FIX: Notify the opponent's waiting thread
+            event.notifyAll(); // Wakes up all threads blocked on event.wait()
+
+            return new Response(ResponseStatus.SUCCESS, "Move stored successfully. Opponent can now retrieve it.");
         }
-
-        // Set the move and turn attribute of the static variable event
-        event.setMove(move);
-        event.setTurn(this.currentUsername);
-
-        // Log the successful move storage
-        LOGGER.log(Level.INFO, "Move " + move + " successfully stored by: " + this.currentUsername);
-
-        // Return a standard SUCCESS Response
-        return new Response(ResponseStatus.SUCCESS, "Move stored successfully. Opponent can now retrieve it.");
     }
 
     /**
-     * Handles the REQUEST_MOVE request. Retrieves the move and clears it for the next turn.
+     * Handles the REQUEST_MOVE request. **Blocks** the thread until a move is available.
+     * This method is synchronized on the shared 'event' object.
      *
      * @return A GamingResponse with SUCCESS status and the move data.
      */
     public Response handleRequestMove() {
-        // Get the move from the static variable event
-        Integer lastMove = event.getMove();
-        String lastTurn = event.getTurn();
+        synchronized (event) {
 
-        // Check if a valid move was made by the opponent
-        // A move is valid if it's NOT -1 AND it was made by the opponent.
-        boolean moveAvailable = lastMove != -1 && !this.currentUsername.equals(lastTurn);
+            // Loop and wait if the move hasn't been made OR if the move was made by this player
+            while (event.getMove() == -1 || this.currentUsername.equals(event.getTurn())) {
 
-        Integer moveToSend = -1; // Default: No move available
-        String message = "No new move available from opponent.";
+                LOGGER.log(Level.INFO, this.currentUsername + " waiting for opponent's move...");
 
-        if (moveAvailable) {
-            moveToSend = lastMove;
-            message = "New move received.";
+                try {
+                    // CRITICAL FIX: Block the thread
+                    // wait() releases the lock and blocks the thread until notifyAll() is called.
+                    event.wait();
+                    LOGGER.log(Level.INFO, this.currentUsername + " woken up, checking move...");
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    return new Response(ResponseStatus.FAILURE, "Handler interrupted while waiting.");
+                }
+                // The thread wakes up and loops back to check the while condition again.
+            }
 
-            // Delete the move once it is sent to the opponent (Prepare for next move)
+            // --- Execution only reaches here once a valid opponent move is available ---
+
+            Integer moveToSend = event.getMove();
+
+            // Clear the move once it is sent to the waiting client
             event.setMove(-1);
 
-            // Note: The turn attribute remains set to the opponent until the current user sends their move.
-
             LOGGER.log(Level.INFO, "Move " + moveToSend + " retrieved and cleared by: " + this.currentUsername);
-        } else {
-            // Log if the user requested a move when one wasn't available
-            LOGGER.log(Level.INFO, this.currentUsername + " requested move, but none was available.");
-        }
 
-        return new GamingResponse(
-                ResponseStatus.SUCCESS,
-                message,
-                moveToSend,
-                null
-        );
+            // The client's polling request is now fulfilled with the correct move data.
+            return new GamingResponse(
+                    ResponseStatus.SUCCESS,
+                    "New move received.",
+                    moveToSend,
+                    true
+            );
+        }
     }
 }
