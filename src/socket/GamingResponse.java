@@ -1,70 +1,90 @@
 package socket;
 
-import model.Event;
-
 /**
- *  Subclass of {@link Response}
- *	This response class is used in response to clients request of type {@link Request.RequestType#REQUEST_MOVE}
+ * Models the server's response to a REQUEST_MOVE request in the TicTacToe game.
+ * This subclass of Response provides information about the opponent's last move
+ * and the current active status of the game session.
+ * <p>
+ * GamingResponse objects are sent from the server to the client during gameplay
+ * to synchronize game state and inform the client about the opponent's actions
+ * and connection status. This enables real-time gameplay updates between players.
  */
 public class GamingResponse extends Response {
 
 	/**
-	 * The last move of the game, value is from 0-8
+	 * An integer representing the last move made by the current player's opponent.
+	 * The value ranges from 0-8, representing the cells of the TicTacToe board
+	 * from top to bottom, left to right:
+	 * <pre>
+	 * 0 | 1 | 2
+	 * --+---+--
+	 * 3 | 4 | 5
+	 * --+---+--
+	 * 6 | 7 | 8
+	 * </pre>
 	 */
-	int move;
+	private int move;
 
 	/**
-	 * If the game is in play. That is {@link Event#getStatus()} is equal to {@link Event.EventStatus#PLAYING}
+	 * A boolean variable indicating if the opponent is still active in the game.
+	 * Returns false if the opponent has aborted the game, disconnected, or
+	 * the game has otherwise been terminated prematurely.
 	 */
-	boolean active;
+	private boolean active;
 
 	/**
-	 * Default constructor, calls parent's class constructor
+	 * Default constructor that creates a GamingResponse with default values.
+	 * Calls the superclass constructor and initializes move and active to
+	 * their default values (0 and false respectively).
 	 */
 	public GamingResponse() {
-		super();
+		this(0, false);
 	}
 
 	/**
+	 * Parameterized constructor that creates a GamingResponse with specific move and status.
+	 * Calls the superclass constructor and initializes all attributes with provided values.
 	 *
-	 * @param status Status to indicate success or failure of the request
-	 * @param message Explanation of the success or failure of the request
-	 * @param move The last move of the game, value is from 0-8
-	 * @param active If the game is in play. That is {@link Event#getStatus()} is equal to {@link Event.EventStatus#PLAYING}
+	 * @param move the integer representing the opponent's last move (0-8)
+	 * @param active the boolean indicating if the opponent is still active in the game
 	 */
-	public GamingResponse(ResponseStatus status, String message, int move, boolean active) {
-		super(status, message);
+	public GamingResponse(int move, boolean active) {
+		super();
 		this.move = move;
 		this.active = active;
 	}
 
 	/**
-	 * Getter function for {@link #move} attribute
-	 * @return lastMove
+	 * Returns the opponent's last move on the TicTacToe board.
+	 *
+	 * @return an integer from 0-8 representing the cell position of the last move
 	 */
 	public int getMove() {
 		return move;
 	}
 
 	/**
-	 * Setter function for {@link #move} attribute
-	 * @param move The last move of the game, value is from 0-8
+	 * Returns the active status of the game session.
+	 *
+	 * @return true if the opponent is still active, false if the game has been aborted
+	 */
+	public boolean getActive() {
+		return active;
+	}
+
+	/**
+	 * Sets the opponent's last move position.
+	 *
+	 * @param move an integer from 0-8 representing the TicTacToe cell position
 	 */
 	public void setMove(int move) {
 		this.move = move;
 	}
 
 	/**
-	 * Getter function for {@link #active} attribute
-	 * @return active
-	 */
-	public boolean isActive() {
-		return active;
-	}
-
-	/**
-	 * Setter function for {@link #active} attribute
-	 * @param active If the game is in play. That is {@link Event#getStatus()} is equal to {@link Event.EventStatus#PLAYING}
+	 * Updates the active status of the game session.
+	 *
+	 * @param active true if the opponent is active, false if the game is terminated
 	 */
 	public void setActive(boolean active) {
 		this.active = active;

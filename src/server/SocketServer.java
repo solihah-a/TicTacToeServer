@@ -1,122 +1,141 @@
 package server;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
-import java.net.InetAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.net.UnknownHostException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import java.net.*;
 
 /**
- *  The main class for TicTacToe Server that sets up the socket server
- *
+ * The main socket server controller class for the TicTacToe game server.
+ * This class sets up the server socket, listens for incoming client connections,
+ * and creates dedicated ServerHandler threads to manage each client session.
+ * <p>
+ * As the primary entry point for the TicTacToe server, this class handles the
+ * initialization of the server environment and coordinates the acceptance of
+ * multiple client connections concurrently. Each connected client is assigned
+ * to a separate ServerHandler thread for independent request processing.
+ * <p>
+ * The server listens on a configurable port (default 5000) and maintains
+ * continuous availability for client connections until shutdown.
  */
 public class SocketServer {
-	/**
-	 * Used for printing server logs of different levels
-	 */
-	private final Logger LOGGER;
 
-	/*
-	The socket server's port number
+	/**
+	 * Logger to output responses.
+	 */
+	private static final Logger LOGGER = LoggerFactory.getLogger(SocketServer.class);
+
+	/**
+	 * The port number that the socket server listens on for incoming client connections.
+	 * This value is set during construction and remains constant for the server instance.
 	 */
 	private final int PORT;
 
 	/**
-	 * ServerSocket instance
+	 * The server socket that listens for incoming client connections.
 	 */
 	private ServerSocket serverSocket;
 
 	/**
-	 * The main function of the application
-	 * It instantiates the class, sets up the server and start accepting client's request
-	 * @param args command line arguments
+	 * The main entry point that launches the TicTacToe server application.
+	 * Creates a SocketServer instance, performs setup initialization, and begins
+	 * accepting client connections.
+	 *
+	 * @param args command-line arguments
 	 */
 	public static void main(String[] args) {
-		try {
-			SocketServer socketServer = new SocketServer();
-			socketServer.setup();
-			socketServer.startAcceptingRequest();
-		}catch (Exception e){
-			System.out.println(e.getMessage());
-		}
+		SocketServer server = new SocketServer();
+		server.setup();
+		server.startAcceptingRequest();
 	}
 
 	/**
-	 * Default constructor with default port = 5000
-	 *
-	 * @throws Exception when invalid port is provided
+	 * Default constructor that initializes the server with the default port number 5000.
+	 * Delegates to the parameterized constructor to set the constant PORT value.
 	 */
-	public SocketServer() throws Exception{
+	public SocketServer() {
+
 		this(5000);
 	}
 
 	/**
-	 * Constructor that set the {@link #PORT} attribute
+	 * Parameterized constructor that initializes the server with a custom port number.
+	 * Allows configuration of the specific port the server will listen on for connections.
 	 *
-	 * @param port The socket server's port number
-	 * @throws Exception when invalid port is provided
+	 * @param port the custom port number for the server to listen on
+	 * @throws IllegalArgumentException if the port is less than 0
 	 */
-	public SocketServer(int port) throws Exception{
-		if(port < 0){
-			throw new Exception("Port number cannot be negative");
+	public SocketServer(int port) {
+		if (port < 0) {
+			throw new IllegalArgumentException("Port number cannot be negative");
 		}
-		PORT = port;
-		LOGGER = Logger.getLogger(SocketServer.class.getName());
+
+		this.PORT = port;
 	}
 
 	/**
-	 * Sets up the socket server
+	 * Performs initial server setup and configuration. Initializes the server socket,
+	 * configures connection parameters, and prepares the server environment for accepting
+	 * clients.
 	 */
-	private void setup() {
+	public void setup() {
+
 		try {
-			serverSocket = new ServerSocket(PORT);
-			LOGGER.log(Level.INFO, "Server Initialization Succeeded"
-					+ "\nServer Host Name: " + InetAddress.getLocalHost().getHostName()
-					+ "\nServer IP: " + InetAddress.getLocalHost().getHostAddress()
-					+ "\nServer Port Number: " + PORT);
-		} catch (UnknownHostException e) {
-			LOGGER.log(Level.SEVERE,"Server Error: Unable to Resolve Host", e);
-			System.exit(1);
+			serverSocket = new ServerSocket(this.PORT);
+			InetAddress localHost = InetAddress.getLocalHost();
+
+			// Log server information
+			LOGGER.info("Server started on port {}", this.PORT);
+			LOGGER.info("Hostname: {}", localHost.getHostName());
+			LOGGER.info("Host Address: {}", localHost.getHostAddress());
+			LOGGER.info("Port Number: {}", serverSocket.getLocalPort());
+
+		} catch (BindException e) {
+			LOGGER.error("Port {} is already in use. Please choose another port.", this.PORT, e);
+		} catch (SocketException e) {
+			LOGGER.error("Socket error occurred: ", e);
 		} catch (IOException e) {
-			LOGGER.log(Level.SEVERE,"Server Error: Server Initialization Failed", e);
-			System.exit(1);
-		} catch (Exception e) {
-			LOGGER.log(Level.SEVERE,"Server Error: Unknown Exception Occurred", e);
-			System.exit(1);
+			LOGGER.error("I/O error while opening the socket: ", e);
 		}
 	}
 
 	/**
-	 * Start accepting client's request
+	 * Starts the main server loop to accept incoming client connections.
+	 * This method runs continuously, accepting one new client connection
+	 * in each loop iteration and spawning a new ServerHandler thread for it.
 	 */
-	private void startAcceptingRequest() {
-		try {
-			// Accept socket connection from the first player and create a new handler to handle all connections
-			Socket socketPlayer1 = serverSocket.accept();
-			LOGGER.log(Level.INFO,"New Socket Client Connect with IP: " + socketPlayer1.getRemoteSocketAddress());
-			ServerHandler serverHandlerPlayer1 = new ServerHandler(socketPlayer1, "Player1");
-			serverHandlerPlayer1.start();
+	public void startAcceptingRequest() {
+		if (this.serverSocket == null) {
+			LOGGER.error("Cannot start accepting requests. Server has not been initialized.");
+			return;
+		}
 
-			// Accept socket connection from the second player and create a new handler to handle all connections
-			Socket socketPlayer2 = serverSocket.accept();
-			LOGGER.log(Level.INFO,"New Socket Client Connect with IP: " + socketPlayer2.getRemoteSocketAddress());
-			ServerHandler serverHandlerPlayer2 = new ServerHandler(socketPlayer2, "Player2");
-			serverHandlerPlayer2.start();
+		LOGGER.info("Server is now accepting connections from multiple clients...");
+
+		try {
+			while (true) { // Infinite loop — server runs continuously
+				Socket clientSocket = serverSocket.accept();
+				LOGGER.info("New client connected from {}:{}", clientSocket.getInetAddress(), clientSocket.getPort());
+
+				// Create and start a handler for this client
+				ServerHandler handler = new ServerHandler(clientSocket);
+				handler.start();
+
+				LOGGER.info("Started ServerHandler for new client connection.");
+			}
 		} catch (IOException e) {
-			LOGGER.log(Level.SEVERE,"Server Error: Client Connection Failed", e);
-		} catch (Exception e) {
-			LOGGER.log(Level.SEVERE,"Server Error: Unknown Exception Occurred", e);
+			LOGGER.error("Error while accepting client connections", e);
 		}
 	}
 
 	/**
-	 * Getter for PORT attribute
+	 * Returns the port number that the server is configured to listen on.
 	 *
-	 * @return PORT
+	 * @return the server's listening port number
 	 */
-	public int getPORT() {
+	public int getPort() {
 		return PORT;
 	}
+
 }

@@ -20,4 +20,25 @@ With all of this done, the project will soon be able to have an actual connectio
   - By setting a unique ID and retrieving it directly
 
 
+## TicTacToe Server - Milestone 3 Report
+* What is the difference between COMPLETE_GAME and ABORT_GAME
+requests?
+  - A COMPLETE_GAME request ends a game normally by marking its status as COMPLETED, 
+while an ABORT_GAME request ends it prematurely by marking it as ABORTED. 
+  - In both cases, the active event is closed and the current event ID is reset.
+
+* With the current implementation, can two users login to the system using the
+same account credentials? Why or Why not?
+  - Yes, two users can log in with the same credentials in the current implementation, because nothing in the provided code enforces a limit of one active session per account.
+    There is no session tracking, no check for an existing logged-in user, and no mechanism to block additional logins for the same username/password.
+
+* Explain the stages of EventStatus and object Event class goes through in the
+game process. Use the “The Flow of Game Event” diagram above as a guide.
+  - An Event object starts in the PENDING status when an invitation is sent, 
+  then transitions to either ACCEPTED or DECLINED based on the recipient's response. 
+  If accepted, the event moves through PLAYING (when acknowledgment is received) and 
+  ends in either COMPLETED (when the game finishes normally) 
+  or ABORTED (if the game is terminated early or a socket disconnects).
+
+
 
