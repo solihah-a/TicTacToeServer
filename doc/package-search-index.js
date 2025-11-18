@@ -1,1 +1,0 @@
-packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html"},{"l":"tictactoe.model"},{"l":"tictactoe.server"},{"l":"tictactoe.socket"}];updateSearchResults();
