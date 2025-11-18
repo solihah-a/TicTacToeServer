@@ -29,8 +29,10 @@ while an ABORT_GAME request ends it prematurely by marking it as ABORTED.
 
 * With the current implementation, can two users login to the system using the
 same account credentials? Why or Why not?
-  - Yes, two users can log in with the same credentials in the current implementation, because nothing in the provided code enforces a limit of one active session per account.
-    There is no session tracking, no check for an existing logged-in user, and no mechanism to block additional logins for the same username/password.
+  - No, two users cannot log in using the same account credentials, 
+  because the system tracks an online status in the database. 
+  When one user is logged in (online = true), the server p
+  prevents another login with the same credentials until the first user disconnects.
 
 * Explain the stages of EventStatus and object Event class goes through in the
 game process. Use the “The Flow of Game Event” diagram above as a guide.
